@@ -100,27 +100,16 @@ def base_model(type, clf):
         x_test = x_test.reshape((-1, 28, 28))
 
     clf.fit(x_train, y_train)
-
     clf = create_pickle(clf, type)
 
     print("Calculating Accuracy of trained Classifier...")
-
+    y_pred, confidence = None, None
     if type == "RNN":
         loss, accuracy = clf.evaluate(x_test, y_test)
-        print(f"Validation accuracy: {accuracy}")
         y_test_pred_probs = clf.predict(x_test)
         y_test_pred_classes = np.argmax(y_test_pred_probs, axis=1)
         accuracy_test = accuracy_score(y_test, y_test_pred_classes)
-        conf_mat_val = confusion_matrix(y_test, y_test_pred_classes)
-        print(f"Validation Accuracy: {accuracy_test}")
-        print(f"Validation Confusion Matrix:\n{conf_mat_val}")
-        plt.matshow(conf_mat_val)
-        plt.title("Confusion Matrix for Validation Data")
-        plt.colorbar()
-        plt.ylabel("True label")
-        plt.xlabel("Predicted label")
-        plt.savefig(get_file_name("validation", type))
-        plt.clf()
+        conf_mat = confusion_matrix(y_test, y_test_pred_classes)
         img_test, labels_test = data.load_testing()
         test_img = np.array(img_test)
         test_labels = np.array(labels_test)
@@ -132,21 +121,21 @@ def base_model(type, clf):
         y_pred = clf.predict(x_test)
         accuracy = accuracy_score(y_test, y_pred)
         conf_mat = confusion_matrix(y_test, y_pred)
-        print("Trained Classifier Confidence: ", confidence)
-        print("Predicted Values: ", y_pred)
-        print("Accuracy of Classifier on Validation Image Data: ", accuracy)
-        print("Confusion Matrix: ", conf_mat)
-        plt.matshow(conf_mat)
-        plt.title("Confusion Matrix for Validation Data")
-        plt.colorbar()
-        plt.ylabel("True label")
-        plt.xlabel("Predicted label")
-        plt.savefig(get_file_name("validation", type))
-
         test_labels_pred = clf.predict(test_img)
 
+    print("Trained Classifier Confidence: ", confidence)
+    print("Predicted Values: ", y_pred)
+    print("Accuracy of Classifier on Validation Image Data: ", accuracy)
+    print("Confusion Matrix: ", conf_mat)
+
+    plt.matshow(conf_mat)
+    plt.title("Confusion Matrix for Validation Data")
+    plt.colorbar()
+    plt.ylabel("True label")
+    plt.xlabel("Predicted label")
+    plt.savefig(get_file_name("validation", type))
+
     print(f"Making Predictions on Test Input Images: {test_labels_pred}")
-    accuracy = accuracy_score(test_labels, test_labels_pred)
     print(f"Calculating Accuracy of Trained Classifier on Test Data: {accuracy}")
 
     print("Creating Confusion Matrix for Test Data...")
