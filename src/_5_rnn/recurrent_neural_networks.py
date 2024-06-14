@@ -21,42 +21,55 @@ def model(type):
     print('\nLoading MNIST Data...')
     data = MNIST()
 
-    # Load training and testing data
-    x_train = load_mnist_images('tmp/dataset/train-images-idx3-ubyte')
-    y_train = load_mnist_labels('tmp/dataset/train-labels-idx1-ubyte')
+    print('\nLoading Training Data...')
+    img_train, labels_train = data.load_training()
+    train_img = np.array(img_train)
+    train_img = train_img.reshape((-1, 28, 28))
+    train_labels = np.array(labels_train)
 
-    print(f'Shape of original x: {x_train.shape}')
+    print('\nLoading Testing Data...')
+    img_test, labels_test = data.load_testing()
+    test_img = np.array(img_test)
+    test_img = test_img.reshape((-1, 28, 28))
+    test_labels = np.array(labels_test)
 
-    # Prepare training and validation data
-    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.1)
+    x = train_img
+    y = train_labels
+
+    print('\nPreparing Classifier Training and Validation Data...')
+    x_train, x_test, y_train, y_test = model_selection.train_test_split(
+        x, y, test_size=0.1)
+
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.1)
 
     x_train = x_train.reshape((-1, 28, 28))
-    x_val = x_val.reshape((-1, 28, 28))
+    x_test = x_test.reshape((-1, 28, 28))
 
-    print(f'Shape of X_train: {x_train.shape}')  # Should be (num_samples, 28, 28)
-    print(f'Shape of X_val: {x_val.shape}')
+
+    print(f'Shape of X_train: {x_train.shape}')
+    print(f'Shape of X_val: {x_test.shape}')
 
     # Get model (assuming get_model_type returns a Keras model)
     clf = get_model_type('RNN')
 
     # Train model
-    clf.fit(x_train, y_train, epochs=10, validation_data=(x_val, y_val))
+    clf.fit(x_train, y_train, epochs=10, validation_data=(x_test, y_test))
 
     # Save model
     clf = create_pickle(clf, type)
 
     # Evaluate on validation data
-    loss, accuracy = clf.evaluate(x_val, y_val)
+    loss, accuracy = clf.evaluate(x_test, y_test)
     print(f'Validation accuracy: {accuracy}')
 
     # Predict on validation data
-    y_val_pred_probs = clf.predict(x_val)
-    y_val_pred_classes = np.argmax(y_val_pred_probs, axis=1)
+    y_test_pred_probs = clf.predict(x_test)
+    y_test_pred_classes = np.argmax(y_test_pred_probs, axis=1)
 
     # Compute accuracy and confusion matrix for validation data
-    accuracy_val = accuracy_score(y_val, y_val_pred_classes)
-    conf_mat_val = confusion_matrix(y_val, y_val_pred_classes)
-    print(f'Validation Accuracy: {accuracy_val}')
+    accuracy_test = accuracy_score(y_test, y_test_pred_classes)
+    conf_mat_val = confusion_matrix(y_test, y_test_pred_classes)
+    print(f'Validation Accuracy: {accuracy_test}')
     print(f'Validation Confusion Matrix:\n{conf_mat_val}')
 
     # Plot confusion matrix for validation data
