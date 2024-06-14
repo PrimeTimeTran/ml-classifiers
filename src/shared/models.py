@@ -17,5 +17,7 @@ def get_model_type(type):
         return MLPClassifier(hidden_layer_sizes=(100,), max_iter=300, alpha=1e-4,
                             solver='sgd', verbose=10, random_state=1,
                             learning_rate_init=.1)
-    elif type == 'FNN':
+    elif type == 'CNN':
+        return
+    elif type == 'RNN':
         return
