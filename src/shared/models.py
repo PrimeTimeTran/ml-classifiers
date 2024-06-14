@@ -9,8 +9,8 @@ from sklearn import model_selection, svm, preprocessing
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import SimpleRNN, Dense
+from tensorflow.python.keras.models import Sequential
+from tensorflow.python.keras.layers import SimpleRNN, Dense
 
 from .mnist_loader import MNIST
 from .utils import (
@@ -105,7 +105,7 @@ def base_model(type, clf):
     print("Calculating Accuracy of trained Classifier...")
     y_pred, confidence = None, None
     if type == "RNN":
-        loss, accuracy = clf.evaluate(x_test, y_test)
+        _, accuracy = clf.evaluate(x_test, y_test)
         y_test_pred_probs = clf.predict(x_test)
         y_test_pred_classes = np.argmax(y_test_pred_probs, axis=1)
         conf_mat = confusion_matrix(y_test, y_test_pred_classes)
