@@ -5,11 +5,13 @@ import numpy as np
 from matplotlib import style
 import matplotlib.pyplot as plt
 from sklearn import model_selection
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 from shared.mnist_loader import MNIST
-from shared.utils import setup_save_directory, create_log_file, image_file_name, get_file_name, create_pickle
+from shared.models import get_model_type
+from shared.utils import setup_save_directory, create_log_file, image_file_name, get_file_name, create_pickle, load_mnist_images, load_mnist_labels
 
 def model(type):
     setup_save_directory()
@@ -20,42 +22,64 @@ def model(type):
     print('\nLoading MNIST Data...')
     data = MNIST()
 
+
+    # print('\nLoading Training Data...')
+    # img_train, labels_train = data.load_training()
+    # train_img = np.array(img_train)
+    # train_labels = np.array(labels_train)
+
+    # print('\nLoading Testing Data...')
+    # img_test, labels_test = data.load_testing()
+    # test_img = np.array(img_test)
+    # test_labels = np.array(labels_test)
+
+    # x = train_img
+    # y = train_labels
+    # x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.1)
+
     print('\nLoading Training Data...')
-    img_train, labels_train = data.load_training()
-    train_img = np.array(img_train)
-    train_labels = np.array(labels_train)
+    img_test, labels_test = data.load_testing()
+    test_img = np.array(img_test)
+    test_labels = np.array(labels_test)
 
     print('\nLoading Testing Data...')
     img_test, labels_test = data.load_testing()
     test_img = np.array(img_test)
     test_labels = np.array(labels_test)
+    test_img = test_img.reshape((-1, 28, 28))
 
-    x = train_img
-    y = train_labels
+    x = load_mnist_images('tmp/dataset/train-images-idx3-ubyte')
+    y = load_mnist_labels('tmp/dataset/train-labels-idx1-ubyte')
+
+
+    print(f'Shape of original x: {x.shape}')
 
     print('\nPreparing Classifier Training and Validation Data...')
-    x_train, x_test, y_train, y_test = model_selection.train_test_split(
-        x, y, test_size=0.1)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.1)
 
-    print("\nConvolutionalNeuralNetwork with n_neighbors=5, algorithm='auto', n_jobs=10")
-    clf = KNeighborsClassifier(n_neighbors=5, algorithm='auto', n_jobs=10)
+    x_train = x_train.reshape((-1, 28, 28))
+    x_test = x_test.reshape((-1, 28, 28))
 
-    clf.fit(x_train, y_train)
+    print(f'Shape of X_train: {x_train.shape}')  # Should be (num_samples, 28, 28)
+    print(f'Shape of X_test: {x_test.shape}')
 
+    clf = get_model_type('RNN')
+    clf.fit(x_train, y_train, epochs=10, validation_data=(x_test, y_test))
     clf = create_pickle(clf, type)
 
-    print('\nCalculating Accuracy of trained Classifier...')
-    confidence = clf.score(x_test, y_test)
-
-    print('\nMaking Predictions on Validation Data...')
+    loss, accuracy = clf.evaluate(x_test, y_test)
+    print(f'Test accuracy: {accuracy}')
     y_pred = clf.predict(x_test)
+    accuracy = accuracy_score(y_test, y_pred.argmax(axis=1))
+    print(f'Accuracy of predictions: {accuracy}')
 
-    print('\nCalculating Accuracy of Predictions...')
-    accuracy = accuracy_score(y_test, y_pred)
+    # Create confusion matrix
+    conf_mat = confusion_matrix(y_test, y_pred.argmax(axis=1))
+    print(f'Confusion matrix:\n{conf_mat}')
+    y_pred_probs = clf.predict(x_test)
 
-    print('\nCreating Confusion Matrix...')
-    conf_mat = confusion_matrix(y_test, y_pred)
-
+    # Compute confidence scores
+    confidence = np.max(y_pred_probs, axis=1)
     print('\nTrained Classifier Confidence: ', confidence)
     print('\nPredicted Values: ', y_pred)
     print('\nAccuracy of Classifier on Validation Image Data: ', accuracy)

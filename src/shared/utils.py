@@ -1,6 +1,8 @@
 import os
 import shutil
 import pickle
+import numpy as np
+import struct
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 save_dir = os.path.join(base_dir, '../../tmp/output')
@@ -29,3 +31,16 @@ def create_pickle(clf, model_type):
     pickle_in = open(f'tmp/models/{model_type}_MNIST.pickle', 'rb')
     clf = pickle.load(pickle_in)
     return clf
+
+
+def load_mnist_images(filename):
+    with open(filename, 'rb') as f:
+        magic, num, rows, cols = struct.unpack(">IIII", f.read(16))
+        images = np.fromfile(f, dtype=np.uint8).reshape(num, rows, cols)
+        return images
+
+def load_mnist_labels(filename):
+    with open(filename, 'rb') as f:
+        magic, num = struct.unpack(">II", f.read(8))
+        labels = np.fromfile(f, dtype=np.uint8)
+        return labels

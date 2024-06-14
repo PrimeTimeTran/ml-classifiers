@@ -8,6 +8,7 @@ from sklearn import model_selection, svm, preprocessing
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 from shared.mnist_loader import MNIST
+from shared.models import get_model_type
 from shared.utils import setup_save_directory, create_log_file, image_file_name, get_file_name, create_pickle
 
 def model(type):
@@ -37,7 +38,7 @@ def model(type):
         x, y, test_size=0.1)
 
     print("\nSupportVectorMachines with gamma=0.1, kernel='poly'")
-    clf = svm.SVC(gamma=0.1, kernel='poly')
+    clf = get_model_type('SVM')
     clf.fit(x_train, y_train)
 
     clf = create_pickle(clf, type)

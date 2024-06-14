@@ -9,6 +9,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 from shared.mnist_loader import MNIST
+from shared.models import get_model_type
 from shared.utils import setup_save_directory, create_log_file, image_file_name, get_file_name, create_pickle
 
 def model(type):
@@ -37,8 +38,7 @@ def model(type):
     x_train, x_test, y_train, y_test = model_selection.train_test_split(
         x, y, test_size=0.1)
 
-    print("\nRandomForestClassifier with n_estimators=100, random_state=42")
-    clf = RandomForestClassifier(n_estimators=100, random_state=42)
+    clf = get_model_type('RFC')
     clf.fit(x_train, y_train)
 
     clf = create_pickle(clf, type)

@@ -5,13 +5,11 @@ import numpy as np
 from matplotlib import style
 import matplotlib.pyplot as plt
 from sklearn import model_selection
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import SimpleRNN, Dense
-
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 from shared.mnist_loader import MNIST
+from shared.models import get_model_type
 from shared.utils import setup_save_directory, create_log_file, image_file_name, get_file_name, create_pickle
 
 def model(type):
@@ -40,13 +38,9 @@ def model(type):
     x_train, x_test, y_train, y_test = model_selection.train_test_split(
         x, y, test_size=0.1)
 
-    print("\nRecurrentNeuralNetwork with 128, input_shape=(28, 28), activation='relu'), Dense(10, activation='softmax'")
-    clf = Sequential([
-        SimpleRNN(128, input_shape=(28, 28), activation='relu'),  # timesteps=28, input_dim=28
-        Dense(10, activation='softmax')
-    ])
-    clf.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-    clf.fit(x_train, y_train, epochs=10)
+    clf = get_model_type('CNN')
+
+    clf.fit(x_train, y_train)
 
     clf = create_pickle(clf, type)
 
