@@ -1,13 +1,12 @@
 import sys
 
-from _1_knn.k_nearest_neighbors import k_nearest_neighbors
-from _2_svm.support_vector_machines import support_vector_machines
-from _3_cnn.convolution_neural_networks import train_model_with_convolution_neural_networks, use_trained_model
-from _4_rfc.random_forest_classifier import random_forest_classifier
+from _1_knn.k_nearest_neighbors import model as knn_model
+from _2_svm.support_vector_machines import model as svm_model
+from _3_rfc.random_forest_classifier import model as rfc_model
+from _4_mlp.multilayer_perceptron import model as mlp_model
 
 if __name__ == "__main__":
-    k_nearest_neighbors()
-    support_vector_machines()
-    random_forest_classifier()
-    # train_model_with_convolution_neural_networks()
-    # use_trained_model()
+    knn_model('KNN')
+    svm_model('SVM')
+    rfc_model('RFC')
+    mlp_model('MLP')

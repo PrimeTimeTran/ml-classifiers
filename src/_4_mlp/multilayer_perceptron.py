@@ -37,7 +37,7 @@ def model(type):
     x_train, x_test, y_train, y_test = model_selection.train_test_split(
         x, y, test_size=0.1)
 
-    print('\nKNearestNeighbors with n_neighbors = 5, algorithm = auto, n_jobs = 10')
+    print("\nMultilayerPerceptron with n_neighbors=5, algorithm='auto', n_jobs=10")
     clf = KNeighborsClassifier(n_neighbors=5, algorithm='auto', n_jobs=10)
 
     clf.fit(x_train, y_train)

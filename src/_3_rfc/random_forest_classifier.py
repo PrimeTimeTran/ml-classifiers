@@ -11,8 +11,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 from shared.mnist_loader import MNIST
 from shared.utils import setup_save_directory, create_log_file, image_file_name, get_file_name, create_pickle
 
-def random_forest_classifier():
-    type = 'RFC'
+def model(type):
     setup_save_directory()
     style.use('ggplot')
     log_file = create_log_file(f'{type}-summary.log')
@@ -38,8 +37,7 @@ def random_forest_classifier():
     x_train, x_test, y_train, y_test = model_selection.train_test_split(
         x, y, test_size=0.1)
 
-    print('\nClassifier with gamma = 0.1; Kernel = polynomial')
-    print('\nPickling the Classifier for Future Use...')
+    print("\nRandomForestClassifier with n_estimators=100, random_state=42")
     clf = RandomForestClassifier(n_estimators=100, random_state=42)
     clf.fit(x_train, y_train)
 

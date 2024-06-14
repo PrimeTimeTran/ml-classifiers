@@ -5,7 +5,10 @@ import numpy as np
 from matplotlib import style
 import matplotlib.pyplot as plt
 from sklearn import model_selection
-from sklearn.neighbors import KNeighborsClassifier
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import SimpleRNN, Dense
+
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 from shared.mnist_loader import MNIST
@@ -37,10 +40,13 @@ def model(type):
     x_train, x_test, y_train, y_test = model_selection.train_test_split(
         x, y, test_size=0.1)
 
-    print('\nKNearestNeighbors with n_neighbors = 5, algorithm = auto, n_jobs = 10')
-    clf = KNeighborsClassifier(n_neighbors=5, algorithm='auto', n_jobs=10)
-
-    clf.fit(x_train, y_train)
+    print("\nRecurrentNeuralNetwork with 128, input_shape=(28, 28), activation='relu'), Dense(10, activation='softmax'")
+    clf = Sequential([
+        SimpleRNN(128, input_shape=(28, 28), activation='relu'),  # timesteps=28, input_dim=28
+        Dense(10, activation='softmax')
+    ])
+    clf.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    clf.fit(x_train, y_train, epochs=10)
 
     clf = create_pickle(clf, type)
 
