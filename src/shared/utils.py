@@ -17,13 +17,12 @@ def setup_save_directory():
         shutil.rmtree(save_dir)
     os.makedirs(save_dir, exist_ok=True)
 
-def image_file_name(idx, value):
+def image_file_name(type, idx, value):
     return os.path.join(
-        save_dir, f'{idx}-original-{value}-predict-{value}.png')
+        save_dir, f'{type}-{idx}-original-{value}-predict-{value}.png')
 
 def create_log_file(name):
     return open(f'{logs_dir}/{name}', "w")
-
 
 def create_pickle(clf, model_type):
     with open(f'tmp/models/{model_type}_MNIST.pickle', 'wb') as f:
@@ -31,7 +30,6 @@ def create_pickle(clf, model_type):
     pickle_in = open(f'tmp/models/{model_type}_MNIST.pickle', 'rb')
     clf = pickle.load(pickle_in)
     return clf
-
 
 def load_mnist_images(filename):
     with open(filename, 'rb') as f:
