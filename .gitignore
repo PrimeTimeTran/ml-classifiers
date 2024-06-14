@@ -2,9 +2,6 @@
 .vscode
 .idea
 venv
-__pycache__/
-
-PetImages/
-**/notes
-**/tmp
-**/tmp/**
+__pycache__
+notes
+tmp
