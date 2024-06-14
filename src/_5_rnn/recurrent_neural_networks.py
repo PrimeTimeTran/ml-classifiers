@@ -6,7 +6,6 @@ from matplotlib import style
 import matplotlib.pyplot as plt
 from sklearn import model_selection
 from sklearn.model_selection import train_test_split
-
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 from shared.mnist_loader import MNIST
@@ -22,104 +21,91 @@ def model(type):
     print('\nLoading MNIST Data...')
     data = MNIST()
 
+    # Load training and testing data
+    x_train = load_mnist_images('tmp/dataset/train-images-idx3-ubyte')
+    y_train = load_mnist_labels('tmp/dataset/train-labels-idx1-ubyte')
 
-    # print('\nLoading Training Data...')
-    # img_train, labels_train = data.load_training()
-    # train_img = np.array(img_train)
-    # train_labels = np.array(labels_train)
+    print(f'Shape of original x: {x_train.shape}')
 
-    # print('\nLoading Testing Data...')
-    # img_test, labels_test = data.load_testing()
-    # test_img = np.array(img_test)
-    # test_labels = np.array(labels_test)
+    # Prepare training and validation data
+    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.1)
 
-    # x = train_img
-    # y = train_labels
-    # x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.1)
+    x_train = x_train.reshape((-1, 28, 28))
+    x_val = x_val.reshape((-1, 28, 28))
 
-    print('\nLoading Training Data...')
-    img_test, labels_test = data.load_testing()
-    test_img = np.array(img_test)
-    test_labels = np.array(labels_test)
+    print(f'Shape of X_train: {x_train.shape}')  # Should be (num_samples, 28, 28)
+    print(f'Shape of X_val: {x_val.shape}')
 
-    print('\nLoading Testing Data...')
+    # Get model (assuming get_model_type returns a Keras model)
+    clf = get_model_type('RNN')
+
+    # Train model
+    clf.fit(x_train, y_train, epochs=10, validation_data=(x_val, y_val))
+
+    # Save model
+    clf = create_pickle(clf, type)
+
+    # Evaluate on validation data
+    loss, accuracy = clf.evaluate(x_val, y_val)
+    print(f'Validation accuracy: {accuracy}')
+
+    # Predict on validation data
+    y_val_pred_probs = clf.predict(x_val)
+    y_val_pred_classes = np.argmax(y_val_pred_probs, axis=1)
+
+    # Compute accuracy and confusion matrix for validation data
+    accuracy_val = accuracy_score(y_val, y_val_pred_classes)
+    conf_mat_val = confusion_matrix(y_val, y_val_pred_classes)
+    print(f'Validation Accuracy: {accuracy_val}')
+    print(f'Validation Confusion Matrix:\n{conf_mat_val}')
+
+    # Plot confusion matrix for validation data
+    plt.matshow(conf_mat_val)
+    plt.title('Confusion Matrix for Validation Data')
+    plt.colorbar()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.savefig(get_file_name('validation_confusion_matrix', type))
+    plt.clf()
+
+    # Load testing data
     img_test, labels_test = data.load_testing()
     test_img = np.array(img_test)
     test_labels = np.array(labels_test)
     test_img = test_img.reshape((-1, 28, 28))
 
-    x = load_mnist_images('tmp/dataset/train-images-idx3-ubyte')
-    y = load_mnist_labels('tmp/dataset/train-labels-idx1-ubyte')
+    # Predict on testing data
+    test_labels_pred_probs = clf.predict(test_img)
+    test_labels_pred_classes = np.argmax(test_labels_pred_probs, axis=1)
 
+    # Compute accuracy and confusion matrix for testing data
+    acc = accuracy_score(test_labels, test_labels_pred_classes)
+    conf_mat_test = confusion_matrix(test_labels, test_labels_pred_classes)
 
-    print(f'Shape of original x: {x.shape}')
-
-    print('\nPreparing Classifier Training and Validation Data...')
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.1)
-
-    x_train = x_train.reshape((-1, 28, 28))
-    x_test = x_test.reshape((-1, 28, 28))
-
-    print(f'Shape of X_train: {x_train.shape}')  # Should be (num_samples, 28, 28)
-    print(f'Shape of X_test: {x_test.shape}')
-
-    clf = get_model_type('RNN')
-    clf.fit(x_train, y_train, epochs=10, validation_data=(x_test, y_test))
-    clf = create_pickle(clf, type)
-
-    loss, accuracy = clf.evaluate(x_test, y_test)
-    print(f'Test accuracy: {accuracy}')
-    y_pred = clf.predict(x_test)
-    accuracy = accuracy_score(y_test, y_pred.argmax(axis=1))
-    print(f'Accuracy of predictions: {accuracy}')
-
-    # Create confusion matrix
-    conf_mat = confusion_matrix(y_test, y_pred.argmax(axis=1))
-    print(f'Confusion matrix:\n{conf_mat}')
-    y_pred_probs = clf.predict(x_test)
-
-    # Compute confidence scores
-    confidence = np.max(y_pred_probs, axis=1)
-    print('\nTrained Classifier Confidence: ', confidence)
-    print('\nPredicted Values: ', y_pred)
-    print('\nAccuracy of Classifier on Validation Image Data: ', accuracy)
-    print('\nConfusion Matrix: \n', conf_mat)
-
-    plt.matshow(conf_mat)
-    plt.title('Confusion Matrix for Validation Data')
-    plt.colorbar()
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
-    plt.savefig(get_file_name('validation', type))
-
-    print('\nMaking Predictions on Test Input Images...')
-    test_labels_pred = clf.predict(test_img)
-
+    # Print and save results
     print('\nCalculating Accuracy of Trained Classifier on Test Data... ')
-    acc = accuracy_score(test_labels, test_labels_pred)
-
-    print('\nCreating Confusion Matrix for Test Data...')
-    conf_mat_test = confusion_matrix(test_labels, test_labels_pred)
-
-    print('\nPredicted Labels for Test Images: ', test_labels_pred)
-    print('\nAccuracy of Classifier on Test Images: ', acc)
-    print('\nConfusion Matrix for Test Data:', conf_mat_test)
+    print(f'Accuracy of Classifier on Test Images: {acc}')
+    print(f'Confusion Matrix for Test Data:\n{conf_mat_test}')
 
     plt.matshow(conf_mat_test)
     plt.title('Confusion Matrix for Test Data')
     plt.colorbar()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
-    plt.savefig(get_file_name('test', type))
+    plt.savefig(get_file_name('test_confusion_matrix', type))
+    plt.clf()
 
+    # Plot some sample images with original and predicted labels
     a = np.random.randint(1, 50, 20)
     for idx, i in enumerate(a):
         two_d = (np.reshape(test_img[i], (28, 28)) * 255).astype(np.uint8)
-        plt.title('Original Label: {0}  Predicted Label: {1}'.format(
-            test_labels[i], test_labels_pred[i]))
+        plt.title(f'Original Label: {test_labels[i]}  Predicted Label: {test_labels_pred_classes[i]}')
         plt.imshow(two_d, interpolation='nearest', cmap='gray')
         filename = image_file_name(idx, test_labels[i])
         plt.savefig(filename)
         plt.clf()
 
     print('Done')
+
+if __name__ == '__main__':
+    model('RNN')
