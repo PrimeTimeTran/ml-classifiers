@@ -1,24 +1,24 @@
 import os
 import sys
-import numpy as np
 import pickle
+import numpy as np
+from matplotlib import style
+import matplotlib.pyplot as plt
 from sklearn import model_selection, svm, preprocessing
 from sklearn.metrics import accuracy_score, confusion_matrix
-import matplotlib.pyplot as plt
-from matplotlib import style
-from shared.utils import setup_save_directory, create_log_file
-from shared.mnist_loader import MNIST
-sys.path.append('../')
 
+from shared.mnist_loader import MNIST
+from shared.utils import setup_save_directory, create_log_file, image_file_name, get_file_name, create_pickle
 
 def support_vector_machines():
-    save_dir = 'predictions-svm'
-    setup_save_directory(save_dir)
+    type = 'SVM'
+    setup_save_directory()
     style.use('ggplot')
-    log_file = create_log_file("summary-svm.log")
+    log_file = create_log_file(f'{type}-summary.log')
     sys.stdout = log_file
+
     print('\nLoading MNIST Data...')
-    data = MNIST('./dataset/')
+    data = MNIST()
 
     print('\nLoading Training Data...')
     img_train, labels_train = data.load_training()
@@ -30,28 +30,19 @@ def support_vector_machines():
     test_img = np.array(img_test)
     test_labels = np.array(labels_test)
 
-    # Features
     x = train_img
-
-    # Labels
     y = train_labels
 
-    # Prepare Classifier Training and Testing Data
     print('\nPreparing Classifier Training and Validation Data...')
     x_train, x_test, y_train, y_test = model_selection.train_test_split(
         x, y, test_size=0.1)
 
-    # Pickle the Classifier for Future Use
-    print('\nSVM Classifier with gamma = 0.1; Kernel = polynomial')
+    print('\nClassifier with gamma = 0.1; Kernel = polynomial')
     print('\nPickling the Classifier for Future Use...')
     clf = svm.SVC(gamma=0.1, kernel='poly')
     clf.fit(x_train, y_train)
 
-    with open('MNIST_SVM.pickle', 'wb') as f:
-        pickle.dump(clf, f)
-
-    pickle_in = open('MNIST_SVM.pickle', 'rb')
-    clf = pickle.load(pickle_in)
+    clf = create_pickle(clf, type)
 
     print('\nCalculating Accuracy of trained Classifier...')
     acc = clf.score(x_test, y_test)
@@ -65,20 +56,17 @@ def support_vector_machines():
     print('\nCreating Confusion Matrix...')
     conf_mat = confusion_matrix(y_test, y_pred)
 
-    print('\nSVM Trained Classifier Accuracy: ', acc)
+    print('\nTrained Classifier Accuracy: ', acc)
     print('\nPredicted Values: ', y_pred)
     print('\nAccuracy of Classifier on Validation Images: ', accuracy)
     print('\nConfusion Matrix: \n', conf_mat)
 
-    # Plot Confusion Matrix Data as a Matrix
     plt.matshow(conf_mat)
     plt.title('Confusion Matrix for Validation Data')
     plt.colorbar()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
-    conf_matrix_filename = os.path.join(
-        save_dir, 'confusion-matrix-for-validation-data.png')
-    plt.savefig(conf_matrix_filename)
+    plt.savefig(get_file_name('validation', type))
 
     print('\nMaking Predictions on Test Input Images...')
     test_labels_pred = clf.predict(test_img)
@@ -86,32 +74,27 @@ def support_vector_machines():
     print('\nCalculating Accuracy of Trained Classifier on Test Data... ')
     acc = accuracy_score(test_labels, test_labels_pred)
 
-    print('\n Creating Confusion Matrix for Test Data...')
+    print('\nCreating Confusion Matrix for Test Data...')
     conf_mat_test = confusion_matrix(test_labels, test_labels_pred)
 
     print('\nPredicted Labels for Test Images: ', test_labels_pred)
     print('\nAccuracy of Classifier on Test Images: ', acc)
-    print('\nConfusion Matrix for Test Data: \n', conf_mat_test)
+    print('\nConfusion Matrix for Test Data:', conf_mat_test)
 
-    # Plot Confusion Matrix for Test Data
     plt.matshow(conf_mat_test)
     plt.title('Confusion Matrix for Test Data')
     plt.colorbar()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     plt.axis('off')
-    conf_matrix_filename = os.path.join(
-        save_dir, 'confusion-matrix-for-test-data.png')
-    plt.savefig(conf_matrix_filename)
+    plt.savefig(get_file_name('test', type))
 
-    # Show the Test Images with Original and Predicted Labels
     a = np.random.randint(1, 40, 15)
     for idx, i in enumerate(a):
         two_d = (np.reshape(test_img[i], (28, 28)) * 255).astype(np.uint8)
         plt.title('Original Label: {0}  Predicted Label: {1}'.format(
             test_labels[i], test_labels_pred[i]))
         plt.imshow(two_d, interpolation='nearest', cmap='gray')
-        filename = os.path.join(
-            save_dir, f'{idx}-original-{test_labels[i]}-predict-{test_labels[i]}.png')
+        filename = image_file_name(idx, test_labels[i])
         plt.savefig(filename)
         plt.clf()

@@ -17,9 +17,9 @@ save_dir = 'predictions'
 
 def train_model_with_convolution_neural_networks():
     print('Training model using convolution neural networks')
+    epochs = 12
     batch_size = 128
     num_classes = 10
-    epochs = 12
     img_rows, img_cols = 28, 28
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
@@ -65,19 +65,6 @@ def train_model_with_convolution_neural_networks():
 
     print('Test loss:', score[0])
     print('Test accuracy:', score[1])
-
-    # In the context of training a neural network model:
-
-    # 1. **Accuracy**: Accuracy represents the proportion of correctly classified samples out of the total number of samples. It is a commonly used metric to evaluate the performance of classification models. For example, an accuracy of 0.80 means that 80% of the samples were classified correctly.
-
-    # 2. **Loss**: Loss, also known as the cost function or objective function, measures how well the model's predictions match the actual labels during training. The goal of training is to minimize the loss function, which indicates the discrepancy between the predicted and actual values. Lower values of loss indicate better performance.
-
-    # 3. **Validation Accuracy (val_acc)**: Validation accuracy is the accuracy of the model evaluated on a separate validation dataset, which is not used during training. It serves as an estimate of how well the model generalizes to unseen data. Monitoring validation accuracy helps prevent overfitting, where the model learns to memorize the training data instead of generalizing well to new data.
-
-    # 4. **Validation Loss (val_loss)**: Validation loss is the loss of the model evaluated on the validation dataset. Similar to validation accuracy, monitoring validation loss helps assess the model's generalization performance. A decrease in validation loss indicates that the model is improving, while an increase may indicate overfitting.
-
-    # In summary, accuracy and loss are metrics used during training to evaluate the performance of the model on the training data, while validation accuracy and validation loss are used to assess the model's generalization performance on unseen data. The goal is to train a model that achieves high accuracy and low loss on both the training and validation datasets.
-
 
 def load_and_preprocess_image(image_path):
     img = Image.open(image_path).convert('L')

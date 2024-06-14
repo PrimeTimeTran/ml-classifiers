@@ -6,16 +6,16 @@ from matplotlib import style
 import matplotlib.pyplot as plt
 from sklearn import model_selection
 from sklearn.neighbors import KNeighborsClassifier
-
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 from shared.mnist_loader import MNIST
-from shared.utils import setup_save_directory, create_log_file, image_file_name, conf_matrix_validation_filename, conf_matrix_test_filename
+from shared.utils import setup_save_directory, create_log_file, image_file_name, get_file_name, create_pickle
 
 def k_nearest_neighbors():
+    type = 'KNN'
     setup_save_directory()
     style.use('ggplot')
-    log_file = create_log_file('summary-knn.log')
+    log_file = create_log_file(f'{type}-summary.log')
     sys.stdout = log_file
 
     print('\nLoading MNIST Data...')
@@ -38,15 +38,13 @@ def k_nearest_neighbors():
     x_train, x_test, y_train, y_test = model_selection.train_test_split(
         x, y, test_size=0.1)
 
-    print('\nKNN Classifier with n_neighbors = 5, algorithm = auto, n_jobs = 10')
+    print('\nClassifier with n_neighbors = 5, algorithm = auto, n_jobs = 10')
     print('\nPickling the Classifier for Future Use...')
     clf = KNeighborsClassifier(n_neighbors=5, algorithm='auto', n_jobs=10)
+
     clf.fit(x_train, y_train)
 
-    with open('tmp/models/MNIST_KNN.pickle', 'wb') as f:
-        pickle.dump(clf, f)
-    pickle_in = open('tmp/models/MNIST_KNN.pickle', 'rb')
-    clf = pickle.load(pickle_in)
+    clf = create_pickle(clf, type)
 
     print('\nCalculating Accuracy of trained Classifier...')
     confidence = clf.score(x_test, y_test)
@@ -60,19 +58,17 @@ def k_nearest_neighbors():
     print('\nCreating Confusion Matrix...')
     conf_mat = confusion_matrix(y_test, y_pred)
 
-    print('\nKNN Trained Classifier Confidence: ', confidence)
+    print('\nTrained Classifier Confidence: ', confidence)
     print('\nPredicted Values: ', y_pred)
     print('\nAccuracy of Classifier on Validation Image Data: ', accuracy)
     print('\nConfusion Matrix: \n', conf_mat)
 
-    # Plot Confusion Matrix Data as a Matrix
     plt.matshow(conf_mat)
     plt.title('Confusion Matrix for Validation Data')
     plt.colorbar()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
-    plt.savefig(conf_matrix_validation_filename)
-
+    plt.savefig(get_file_name('validation', type))
 
     print('\nMaking Predictions on Test Input Images...')
     test_labels_pred = clf.predict(test_img)
@@ -85,15 +81,14 @@ def k_nearest_neighbors():
 
     print('\nPredicted Labels for Test Images: ', test_labels_pred)
     print('\nAccuracy of Classifier on Test Images: ', acc)
-    print('\nConfusion Matrix for Test Data: \n', conf_mat_test)
+    print('\nConfusion Matrix for Test Data:', conf_mat_test)
 
     plt.matshow(conf_mat_test)
     plt.title('Confusion Matrix for Test Data')
     plt.colorbar()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
-    plt.axis('off')
-    plt.savefig(conf_matrix_test_filename)
+    plt.savefig(get_file_name('test', type))
 
     a = np.random.randint(1, 50, 20)
     for idx, i in enumerate(a):
