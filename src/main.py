@@ -8,9 +8,9 @@ from _5_rnn.recurrent_neural_networks import model as rnn_model
 from _6_cnn.convolution_neural_networks import model as cnn_model
 
 if __name__ == "__main__":
-    # knn_model('KNN')
-    # svm_model('SVM')
-    # rfc_model('RFC')
-    # mlp_model('MLP')
-    # cnn_model('CNN')
+    knn_model('KNN')
+    svm_model('SVM')
+    rfc_model('RFC')
+    mlp_model('MLP')
     rnn_model('RNN')
+    # cnn_model('CNN')

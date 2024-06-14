@@ -5,7 +5,6 @@ import numpy as np
 from matplotlib import style
 import matplotlib.pyplot as plt
 from sklearn import model_selection
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 from shared.mnist_loader import MNIST
@@ -37,10 +36,7 @@ def model(type):
     y = train_labels
 
     print('\nPreparing Classifier Training and Validation Data...')
-    x_train, x_test, y_train, y_test = model_selection.train_test_split(
-        x, y, test_size=0.1)
-
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.1)
+    x_train, x_test, y_train, y_test = model_selection.train_test_split(x, y, test_size=0.1)
 
     x_train = x_train.reshape((-1, 28, 28))
     x_test = x_test.reshape((-1, 28, 28))
@@ -78,7 +74,7 @@ def model(type):
     plt.colorbar()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
-    plt.savefig(get_file_name('validation_confusion_matrix', type))
+    plt.savefig(get_file_name('validation', type))
     plt.clf()
 
     # Load testing data
@@ -105,7 +101,7 @@ def model(type):
     plt.colorbar()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
-    plt.savefig(get_file_name('test_confusion_matrix', type))
+    plt.savefig(get_file_name('test', type))
     plt.clf()
 
     # Plot some sample images with original and predicted labels
