@@ -6,7 +6,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import model_selection, svm, preprocessing
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 
 import tensorflow as tf
 from tensorflow.python.keras.models import Sequential
@@ -75,7 +75,10 @@ class Model(Log):
             conf_matrix = confusion_matrix(y_validation, y_pred)
             self.test_labels_pred = self.classifier.predict(self.test_img)
 
-        self.log(f"\n\nTraining Confidence: \n{confidence:.2f}\nPredicted Values: {y_pred}\nAccuracy of Classifier on Validation Image Data: {accuracy}\n")
+        report_str = classification_report(y_validation, y_pred)
+        self.log(f"\nClassification Report: \n{report_str}")
+
+        self.log(f"\n\nTraining Confidence: \n{confidence:.2f}\nAccuracy: {accuracy:.2f}\nPredicted Values: {y_pred}\n")
 
         self.generate_confusion_matrix(conf_matrix, 'validation')
 
@@ -100,13 +103,9 @@ class Model(Log):
         for idx, i in enumerate(a):
             two_d = (np.reshape(
                 self.test_img[i], (28, 28)) * 255).astype(np.uint8)
-            plt.title(
-                f"Original Label: {self.test_labels[i]}  Predicted Label: {
-                    self.test_labels_pred[i]}"
-            )
+            plt.title(f"Original Label: {self.test_labels[i]} Predicted Label: {self.test_labels_pred[i]}")
             plt.imshow(two_d, interpolation="nearest", cmap="gray")
-            filename = f'tmp/output/{self.strategy}-{idx}-labeled-{
-                self.test_labels[i]}-predict-{self.test_labels_pred[i]}'
+            filename = f'tmp/output/{self.strategy}-{idx}-labeled-{self.test_labels[i]}-predict-{self.test_labels_pred[i]}'
             plt.savefig(filename)
             plt.clf()
 
@@ -120,8 +119,7 @@ class Model(Log):
 
         for (i, j), value in np.ndenumerate(matrix):
             plt.text(j, i, f'{value}', ha='center', va='center', color='white')
-        filename = f'matrices/{self.timestamp}__{
-            self.strategy}__{dataset}__confusion_matrix'
+        filename = f'matrices/{self.timestamp}__{self.strategy}__{dataset}__confusion_matrix'
         plt.savefig(save(filename))
         plt.clf()
 
