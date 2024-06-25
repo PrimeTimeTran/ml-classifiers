@@ -12,14 +12,16 @@ import tensorflow as tf
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.layers import SimpleRNN, Dense
 
-from .mnist_loader import MNIST
-from .utils import (
+from .shared.mnist_loader import MNIST
+from .shared.utils import (
     setup_save_directory,
     create_log_file,
     image_file_name,
     get_file_name,
     create_pickle,
 )
+
+from .log import Log
 
 
 def get_model_type(type):
@@ -67,6 +69,11 @@ def get_model_type(type):
         )
         return
 
+
+class BaseModel(Log):
+    def __init__(self):
+        super().__init__()
+        print('Base Model')
 
 def base_model(type, clf):
     setup_save_directory()

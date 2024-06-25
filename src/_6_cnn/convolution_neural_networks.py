@@ -1,5 +1,5 @@
 from shared.mnist_loader import MNIST
-from shared.models import get_model_type,base_model
+from base_model import get_model_type,base_model
 from shared.utils import setup_save_directory, create_log_file, image_file_name, get_file_name, create_pickle
 
 def model(type):
