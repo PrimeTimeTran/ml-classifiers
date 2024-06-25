@@ -14,8 +14,7 @@ from tensorflow.python.keras.layers import SimpleRNN, Dense
 
 from .shared.mnist_loader import MNIST
 from .shared.utils import (
-    image_file_name,
-    get_file_name,
+    save,
     create_pickle,
 )
 
@@ -41,16 +40,16 @@ class Model(Log):
         self.test_img = np.array(img_test)
         self.test_labels = np.array(labels_test)
 
-    def _2_split_data_to_train_and_test_sets(self):
-        self.log("Preparing Classifier Training and Validation Data...")
+    def _2_split_into_train_and_validation_sets(self):
+        self.log("Splitting data into train & validation sets...")
         return model_selection.train_test_split(
             self.train_img, self.train_labels, test_size=0.1
         )
 
-    def _3_evaluate(self, x_train, x_test, y_train, y_test):
+    def _3_fit_and_measure_validation(self, x_train, x_validation, y_train, y_validation):
         if self.strategy == "rnn":
             x_train = x_train.reshape((-1, 28, 28))
-            x_test = x_test.reshape((-1, 28, 28))
+            x_validation = x_validation.reshape((-1, 28, 28))
 
         self.classifier.fit(x_train, y_train)
         self.classifier = create_pickle(self.classifier, self.strategy)
@@ -59,57 +58,39 @@ class Model(Log):
         y_pred, confidence = None, None
 
         if self.strategy == "rnn":
-            _, self.accuracy = self.classifier.evaluate(x_test, y_test)
-            y_test_pred_probs = self.classifier.predict(x_test)
-            y_test_pred_classes = np.argmax(y_test_pred_probs, axis=1)
-            self.conf_mat = confusion_matrix(y_test, y_test_pred_classes)
+            _, self.accuracy = self.classifier.evaluate(x_validation, y_validation)
+            y_validation_pred_probs = self.classifier.predict(x_validation)
+            y_validation_pred_classes = np.argmax(y_validation_pred_probs, axis=1)
+            self.conf_mat = confusion_matrix(y_validation, y_validation_pred_classes)
             self.test_img = self.test_img.reshape((-1, 28, 28))
             test_labels_pred_probs = self.classifier.predict(self.test_img)
             self.test_labels_pred = np.argmax(test_labels_pred_probs, axis=1)
         else:
-            confidence = self.classifier.score(x_test, y_test)
-            y_pred = self.classifier.predict(x_test)
-            self.accuracy = accuracy_score(y_test, y_pred)
-            self.conf_mat = confusion_matrix(y_test, y_pred)
+            confidence = self.classifier.score(x_validation, y_validation)
+            y_pred = self.classifier.predict(x_validation)
+            self.accuracy = accuracy_score(y_validation, y_pred)
+            self.conf_mat = confusion_matrix(y_validation, y_pred)
             self.test_labels_pred = self.classifier.predict(self.test_img)
 
-        self.log(f"\n\nTrained Classifier Confidence: \n{confidence}")
-        self.log(f"Predicted Values: {y_pred}")
-        self.log(f"Accuracy of Classifier on Validation Image Data: {self.accuracy}")
-        self.log(f"\n\nConfusion Matrix: {self.conf_mat}")
+        self.log(f"\n\nTraining Confidence: \n{confidence:.2f}\nPredicted Values: {y_pred}\nAccuracy of Classifier on Validation Image Data: {self.accuracy}")
 
-        plt.matshow(self.conf_mat)
-        plt.title("Confusion Matrix for Validation Data")
-        plt.colorbar()
-        plt.ylabel("True label")
-        plt.xlabel("Predicted label")
-        plt.savefig(get_file_name("validation", self.strategy))
+        self.generate_confusion_matrix(self.conf_mat, 'validation')
 
+    def _4_evaluate_on_test_set(self):
+        test_confusion_matrix = confusion_matrix(self.test_labels, self.test_labels_pred)
+
+        self.generate_confusion_matrix(test_confusion_matrix, 'test')
+        self.generate_images_with_predictions_for_review()
 
     def train(self):
         self.log("Loading MNIST Data...")
         self._1_load_data()
-        x_train, x_test, y_train, y_test = self._2_split_data_to_train_and_test_sets()
-        self._3_evaluate(x_train, x_test, y_train, y_test)
-
-        self.log(f"Making Predictions on Test Input Images: {self.test_labels_pred}")
-        self.log(f"Calculating Accuracy of Trained Classifier on Test Data: {self.accuracy}")
-
-        self.log("Creating Confusion Matrix for Test Data...")
-        conf_mat_test = confusion_matrix(self.test_labels, self.test_labels_pred)
-
-        self.log(f"Predicted Labels for Test Images: {self.test_labels_pred}")
-        self.log(f"Accuracy of Classifier on Test Images: {self.accuracy}")
-        self.log(f"Confusion Matrix for Test Data: \n{conf_mat_test}")
-
-        plt.matshow(conf_mat_test)
-        plt.title("Confusion Matrix for Test Data")
-        plt.colorbar()
-        plt.ylabel("True label")
-        plt.xlabel("Predicted label")
-        plt.savefig(get_file_name("test", self.strategy))
-        plt.clf()
-
+        x_train, x_validation, y_train, y_validation = self._2_split_into_train_and_validation_sets()
+        self._3_fit_and_measure_validation(x_train, x_validation, y_train, y_validation)
+        self._4_evaluate_on_test_set()
+        self.log("Done")
+        
+    def generate_images_with_predictions_for_review(self):
         a = np.random.randint(1, 50, 20)
         for idx, i in enumerate(a):
             two_d = (np.reshape(self.test_img[i], (28, 28)) * 255).astype(np.uint8)
@@ -117,22 +98,24 @@ class Model(Log):
                 f"Original Label: {self.test_labels[i]}  Predicted Label: {self.test_labels_pred[i]}"
             )
             plt.imshow(two_d, interpolation="nearest", cmap="gray")
-            # f'{type}-{idx}-labeled-{value}-predict-{value}.png'
-            filename = image_file_name(self.strategy, idx, self.test_labels[i])
+            filename = f'tmp/output/{self.strategy}-{idx}-labeled-{self.test_labels[i]}-predict-{self.test_labels_pred[i]}'
             plt.savefig(filename)
             plt.clf()
 
-        self.log("Done")
-
     def generate_confusion_matrix(self, matrix, dataset):
-        self.log('Generating Confusion Matrix')
+        self.log(f'\n\nGenerating Confusion Matrix: {dataset}\n{matrix}')
         plt.matshow(matrix)
         plt.title(f"Confusion Matrix for {dataset} Data")
         plt.colorbar()
         plt.ylabel("True label")
         plt.xlabel("Predicted label")
-        plt.savefig(get_file_name(dataset, self.strategy))
+
+        for (i, j), value in np.ndenumerate(matrix):
+            plt.text(j, i, f'{value}', ha='center', va='center', color='red')
+        filename = f'matrices/{self.timestamp}__{self.strategy}__{dataset}__confusion_matrix'
+        plt.savefig(save(filename))
         plt.clf()
+
 
     def select_classifier_from_strategy(self, type):
         self.log(f'select_classifier_from_strategy: {type}')

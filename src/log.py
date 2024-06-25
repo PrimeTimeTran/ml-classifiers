@@ -10,6 +10,7 @@ class Log():
         current_date = datetime.now()
         formatted_date = current_date.strftime("%Y-%m")
         self.period = formatted_date
+        self.timestamp = datetime.now().strftime('%m-%d-%y__%H-%M-%S')
 
     def log(self, val):
         if not hasattr(self, 'logger'):
@@ -17,8 +18,7 @@ class Log():
         self.logger.info(val)
         
     def setup_logger(self):
-        current_datetime = datetime.now().strftime('%m-%d-%y_%H-%M-%S')
-        log_filename = f"{current_datetime}-summary.log"
+        log_filename = f"{self.timestamp}-summary.log"
         log_path = os.path.join(f'{base_dir}/../tmp/logs', log_filename)
         
         logger = logging.getLogger('Scraper')
