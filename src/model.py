@@ -58,26 +58,30 @@ class Model(Log):
         y_pred, confidence = None, None
 
         if self.strategy == "rnn":
-            _, self.accuracy = self.classifier.evaluate(x_validation, y_validation)
+            _, accuracy = self.classifier.evaluate(
+                x_validation, y_validation)
             y_validation_pred_probs = self.classifier.predict(x_validation)
-            y_validation_pred_classes = np.argmax(y_validation_pred_probs, axis=1)
-            self.conf_mat = confusion_matrix(y_validation, y_validation_pred_classes)
+            y_validation_pred_classes = np.argmax(
+                y_validation_pred_probs, axis=1)
+            conf_matrix = confusion_matrix(
+                y_validation, y_validation_pred_classes)
             self.test_img = self.test_img.reshape((-1, 28, 28))
             test_labels_pred_probs = self.classifier.predict(self.test_img)
             self.test_labels_pred = np.argmax(test_labels_pred_probs, axis=1)
         else:
             confidence = self.classifier.score(x_validation, y_validation)
             y_pred = self.classifier.predict(x_validation)
-            self.accuracy = accuracy_score(y_validation, y_pred)
-            self.conf_mat = confusion_matrix(y_validation, y_pred)
+            accuracy = accuracy_score(y_validation, y_pred)
+            conf_matrix = confusion_matrix(y_validation, y_pred)
             self.test_labels_pred = self.classifier.predict(self.test_img)
 
-        self.log(f"\n\nTraining Confidence: \n{confidence:.2f}\nPredicted Values: {y_pred}\nAccuracy of Classifier on Validation Image Data: {self.accuracy}")
+        self.log(f"\n\nTraining Confidence: \n{confidence:.2f}\nPredicted Values: {y_pred}\nAccuracy of Classifier on Validation Image Data: {accuracy}\n")
 
-        self.generate_confusion_matrix(self.conf_mat, 'validation')
+        self.generate_confusion_matrix(conf_matrix, 'validation')
 
     def _4_evaluate_on_test_set(self):
-        test_confusion_matrix = confusion_matrix(self.test_labels, self.test_labels_pred)
+        test_confusion_matrix = confusion_matrix(
+            self.test_labels, self.test_labels_pred)
 
         self.generate_confusion_matrix(test_confusion_matrix, 'test')
         self.generate_images_with_predictions_for_review()
@@ -86,24 +90,28 @@ class Model(Log):
         self.log("Loading MNIST Data...")
         self._1_load_data()
         x_train, x_validation, y_train, y_validation = self._2_split_into_train_and_validation_sets()
-        self._3_fit_and_measure_validation(x_train, x_validation, y_train, y_validation)
+        self._3_fit_and_measure_validation(
+            x_train, x_validation, y_train, y_validation)
         self._4_evaluate_on_test_set()
         self.log("Done")
-        
+
     def generate_images_with_predictions_for_review(self):
         a = np.random.randint(1, 50, 20)
         for idx, i in enumerate(a):
-            two_d = (np.reshape(self.test_img[i], (28, 28)) * 255).astype(np.uint8)
+            two_d = (np.reshape(
+                self.test_img[i], (28, 28)) * 255).astype(np.uint8)
             plt.title(
-                f"Original Label: {self.test_labels[i]}  Predicted Label: {self.test_labels_pred[i]}"
+                f"Original Label: {self.test_labels[i]}  Predicted Label: {
+                    self.test_labels_pred[i]}"
             )
             plt.imshow(two_d, interpolation="nearest", cmap="gray")
-            filename = f'tmp/output/{self.strategy}-{idx}-labeled-{self.test_labels[i]}-predict-{self.test_labels_pred[i]}'
+            filename = f'tmp/output/{self.strategy}-{idx}-labeled-{
+                self.test_labels[i]}-predict-{self.test_labels_pred[i]}'
             plt.savefig(filename)
             plt.clf()
 
     def generate_confusion_matrix(self, matrix, dataset):
-        self.log(f'\n\nGenerating Confusion Matrix: {dataset}\n{matrix}')
+        self.log(f'\nGenerating Confusion Matrix: {dataset}\n{matrix}\n')
         plt.matshow(matrix)
         plt.title(f"Confusion Matrix for {dataset} Data")
         plt.colorbar()
@@ -111,22 +119,24 @@ class Model(Log):
         plt.xlabel("Predicted label")
 
         for (i, j), value in np.ndenumerate(matrix):
-            plt.text(j, i, f'{value}', ha='center', va='center', color='red')
-        filename = f'matrices/{self.timestamp}__{self.strategy}__{dataset}__confusion_matrix'
+            plt.text(j, i, f'{value}', ha='center', va='center', color='white')
+        filename = f'matrices/{self.timestamp}__{
+            self.strategy}__{dataset}__confusion_matrix'
         plt.savefig(save(filename))
         plt.clf()
-
 
     def select_classifier_from_strategy(self, type):
         self.log(f'select_classifier_from_strategy: {type}')
         if type == "knn":
-            self.log("KNearestNeighbors with n_neighbors = 5, algorithm = auto, n_jobs = 10")
+            self.log(
+                "KNearestNeighbors with n_neighbors = 5, algorithm = auto, n_jobs = 10")
             return KNeighborsClassifier(n_neighbors=5, algorithm="auto", n_jobs=10)
         elif type == "svm":
             self.log("SupportVectorMachines with gamma=0.1, kernel='poly'")
             return svm.SVC(gamma=0.1, kernel="poly")
         elif type == "rfc":
-            self.log("RandomForestClassifier with n_estimators=100, random_state=42")
+            self.log(
+                "RandomForestClassifier with n_estimators=100, random_state=42")
             return RandomForestClassifier(n_estimators=100, random_state=42)
         elif type == "mlp":
             self.log(
