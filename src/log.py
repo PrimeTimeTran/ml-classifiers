@@ -7,7 +7,6 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 
 class Log():
     def __init__(self) -> None:
-        print('Log')
         current_date = datetime.now()
         formatted_date = current_date.strftime("%Y-%m")
         self.period = formatted_date
@@ -19,7 +18,7 @@ class Log():
         
     def setup_logger(self):
         current_datetime = datetime.now().strftime('%m-%d-%y_%H-%M-%S')
-        log_filename = f"download_{current_datetime}-summary.log"
+        log_filename = f"{current_datetime}-summary.log"
         log_path = os.path.join(f'{base_dir}/../tmp/logs', log_filename)
         
         logger = logging.getLogger('Scraper')

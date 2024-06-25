@@ -10,7 +10,7 @@ if __name__ == "__main__":
     strategy = args['strategy']
     method = args['method']
 
-    model = Model()
+    model = Model(strategy)
 
-    if strategy == 'train':
-      model.train(strategy)
+    if method == 'train':
+      model.train()
