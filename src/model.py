@@ -1,8 +1,12 @@
 import numpy as np
+
 from matplotlib import style
 import matplotlib.pyplot as plt
+
+from tensorflow.python.keras.models import Sequential
+from tensorflow.python.keras.layers import SimpleRNN, Dense
+
 from sklearn.svm import SVC
-from sklearn.datasets import load_digits
 from sklearn.tree import plot_tree
 from sklearn.decomposition import PCA
 from sklearn import model_selection, svm
@@ -12,9 +16,6 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.inspection import DecisionBoundaryDisplay
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
-
-from tensorflow.python.keras.models import Sequential
-from tensorflow.python.keras.layers import SimpleRNN, Dense
 
 from .shared.mnist_loader import MNIST
 from .shared.utils import (
@@ -108,6 +109,8 @@ class Model(Log):
             self.render_svm_scatter_plot()
         elif self.strategy == 'rfc':
             self.render_rfc_decision_tree()
+        elif self.strategy == 'mlp':
+            self.render_mlp_network()
 
     def generate_images_with_predictions_for_review(self):
         a = np.random.randint(1, 50, 20)
@@ -137,9 +140,6 @@ class Model(Log):
         plt.clf()
 
     def render_knn_scatter_plot(self):
-        print("Shape of self.train_imgs:", self.train_imgs.shape)
-        print("Shape of self.test_imgs:", self.test_imgs.shape)
-
         train_img_flat = self.train_imgs.reshape(len(self.train_imgs), -1)
         test_imgs_flat = self.test_imgs.reshape(len(self.test_imgs), -1)
 
@@ -187,7 +187,7 @@ class Model(Log):
             ax.set_title(f"KNN decision boundaries\n(weights={weights!r})")
 
         plt.tight_layout()
-        plt.savefig(save(f'{self.strategy}-xlim-ylim-graph'))
+        plt.savefig(save(f'{self.strategy}-scatter-plot'))
 
     def render_svm_scatter_plot(self):
         try:
@@ -223,20 +223,70 @@ class Model(Log):
             ax.set_xlim(x_min, x_max)
             ax.set_ylim(y_min, y_max)
             plt.tight_layout()
-            plt.savefig(f'{self.strategy}-scatter-plot.png')
+            plt.savefig(save(f'{self.strategy}-decision-boundaries'))
         
         except Exception as e:
             print(f"Error occurred: {e}")
 
-
     def render_rfc_decision_tree(self):
         estimator = self.classifier.estimators_[0]
-        plt.figure(figsize=(10, 8))
-        digits = load_digits()
-        feature_names = [f'pixel_{i}_{j}' for i in range(digits.images[0].shape[0]) for j in range(digits.images[0].shape[1])]
-        class_names = [str(i) for i in range(10)]
-        plot_tree(estimator, feature_names=feature_names, class_names=class_names, filled=True)
-        plt.savefig(save(f'{self.strategy}-decision-tree'))
+        plt.figure(figsize=(25, 20))
+        feature_names = [f'pixel_{i}' for i in range(self.train_imgs.shape[1])]
+        class_names = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+        plot_tree(estimator, feature_names=feature_names, class_names=class_names, filled=True, fontsize=6, max_depth=4)
+        plt.savefig(save(f'{self.strategy}-decision-tree.png'), dpi=125)
+
+    def render_mlp_network(self):
+        clf = self.classifier
+        fig, ax = plt.subplots(figsize=(10, 8))
+
+        # Calculate positions for all layers
+        layers = [clf.coefs_[i] for i in range(len(clf.coefs_))]
+        v_spacing = 100 
+        h_spacing = 100 
+
+        # Input layer
+        layer_sizes = [clf.n_features_in_] + [s for s in clf.hidden_layer_sizes] + [clf.n_outputs_]
+        layer_center = [np.arange(1, layer_sizes[i] + 1) * v_spacing for i in range(len(layer_sizes))]
+        layer_center = [item - np.mean(item) for item in layer_center]
+        for i, layer in enumerate(layer_center):
+            if i == 0:
+                layer_center[i] = layer / max(layer) * (len(layer_sizes) - 1) * v_spacing
+            else:
+                layer_center[i] = layer + (len(layer_sizes) - 1 - i) * v_spacing
+
+        # Draw connections between layers
+        for n, layer in enumerate(layers):
+            m = layer.shape[0]
+            if n == 0:
+                layer_top = layer_center[n]
+            else:
+                layer_top = layer_center[n + 1]
+            layer_bottom = layer_center[n]
+            layer_bottom -= (layer.shape[1] - 1) / 2 * h_spacing
+            layer_top -= (layer.shape[0] - 1) / 2 * h_spacing
+            for i in range(layer.shape[1]):
+                for j in range(layer.shape[0]):
+                    if n == len(layers) - 1:
+                        ax.plot([n * h_spacing, (n + 1) * h_spacing], [layer_bottom[j], layer_top[i]], color='blue')
+                    else:
+                        ax.plot([n * h_spacing, (n + 1) * h_spacing], [layer_bottom[j], layer_top[i]], color='black')
+
+        for n, layer in enumerate(layers):
+            layer_top = layer_center[n]
+            for m, neuron in enumerate(layer.T):
+                circle = plt.Circle((n * h_spacing, layer_top[m]), 10, color='w', ec='k', zorder=4)
+                ax.add_artist(circle)
+
+        for i, layer_size in enumerate(layer_sizes):
+            ax.text(i * h_spacing, 0, 'Layer {}'.format(i + 1), fontsize=12, ha='center')
+            ax.text(i * h_spacing, -v_spacing / 2, '{} units'.format(layer_size), ha='center', va='top', fontsize=10)
+
+        ax.set_xlim(-h_spacing / 2, (len(layers) - 0.5) * h_spacing + h_spacing / 2)
+        ax.set_ylim(-v_spacing / 2, (np.max(layer_center[-1]) + v_spacing / 2))
+        ax.axis('off')
+        plt.title('Multi-Layer Perceptron (MLP) Architecture')
+        plt.savefig(save(f'{self.strategy}-mlp-network'))
 
     def select_classifier_from_strategy(self, strategy):
         self.log(f'select_classifier_from_strategy: {strategy}')
@@ -275,6 +325,8 @@ class Model(Log):
                 learning_rate_init=0.001,
             )
         elif strategy == "rnn":
+            # RNN is a bi directional neural network. It allows 
+            # outputs of nodes to affect the input of the same node(in subsequent runs)
             self.log(
                 "RecurrentNeuralNetwork with 128, input_shape=(28, 28), activation='relu'), Dense(10, activation='softmax'"
             )
@@ -286,8 +338,8 @@ class Model(Log):
             )
             clf.compile(
                 optimizer="adam",
-                loss="sparse_categorical_crossentropy",
                 metrics=["accuracy"],
+                loss="sparse_categorical_crossentropy",
             )
             return clf
         elif strategy == "cnn":
