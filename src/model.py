@@ -1,6 +1,9 @@
 import numpy as np
 from matplotlib import style
 import matplotlib.pyplot as plt
+from sklearn.svm import SVC
+from sklearn.datasets import load_digits
+from sklearn.tree import plot_tree
 from sklearn.decomposition import PCA
 from sklearn import model_selection, svm
 from sklearn.neural_network import MLPClassifier
@@ -20,6 +23,7 @@ from .shared.utils import (
 )
 
 from .log import Log
+
 
 class Model(Log):
     def __init__(self, strategy):
@@ -94,8 +98,16 @@ class Model(Log):
         self._3_fit_and_measure_validation(
             x_train, x_validation, y_train, y_validation)
         self._4_evaluate_on_test_set()
-        self.render_scatter_plot_with_decision_boundaries()
+        self.render_strategy_plot()
         self.log("Done")
+
+    def render_strategy_plot(self):
+        if self.strategy == 'knn':
+            self.render_knn_scatter_plot()
+        elif self.strategy == 'svm':
+            self.render_svm_scatter_plot()
+        elif self.strategy == 'rfc':
+            self.render_rfc_decision_tree()
 
     def generate_images_with_predictions_for_review(self):
         a = np.random.randint(1, 50, 20)
@@ -124,17 +136,17 @@ class Model(Log):
         plt.savefig(save(filename))
         plt.clf()
 
-    def render_scatter_plot_with_decision_boundaries(self):
+    def render_knn_scatter_plot(self):
         print("Shape of self.train_imgs:", self.train_imgs.shape)
         print("Shape of self.test_imgs:", self.test_imgs.shape)
-        
+
         train_img_flat = self.train_imgs.reshape(len(self.train_imgs), -1)
         test_imgs_flat = self.test_imgs.reshape(len(self.test_imgs), -1)
-        
+
         scaler = StandardScaler()
         train_img_flat = scaler.fit_transform(train_img_flat)
         test_imgs_flat = scaler.transform(test_imgs_flat)
-        
+
         pca = PCA(n_components=2)
         x_train_pca = pca.fit_transform(train_img_flat)
         x_test_pca = pca.transform(test_imgs_flat)
@@ -150,7 +162,7 @@ class Model(Log):
         for ax, weights in zip(axs, ("uniform", "distance")):
             self.classifier.set_params(weights=weights)
             self.classifier.fit(x_train_pca, self.train_labels)
-            
+
             disp = DecisionBoundaryDisplay.from_estimator(
                 self.classifier,
                 x_train_pca,
@@ -160,7 +172,8 @@ class Model(Log):
                 ax=ax,
             )
 
-            scatter = ax.scatter(x_test_pca[:, 0], x_test_pca[:, 1], c=self.test_labels, edgecolors="k")
+            scatter = ax.scatter(
+                x_test_pca[:, 0], x_test_pca[:, 1], c=self.test_labels, edgecolors="k")
             legend = ax.legend(
                 scatter.legend_elements()[0],
                 np.unique(self.test_labels),
@@ -168,29 +181,87 @@ class Model(Log):
                 title="Classes",
             )
 
-            # Set dynamic limits for x and y axes
             ax.set_xlim(x_min - 0.1 * abs(x_min), x_max + 0.1 * abs(x_max))
             ax.set_ylim(y_min - 0.1 * abs(y_min), y_max + 0.1 * abs(y_max))
-            
+
             ax.set_title(f"KNN decision boundaries\n(weights={weights!r})")
 
         plt.tight_layout()
         plt.savefig(save(f'{self.strategy}-xlim-ylim-graph'))
 
+    def render_svm_scatter_plot(self):
+        try:
+            train_img_flat = self.train_imgs.reshape(len(self.train_imgs), -1)
+            test_imgs_flat = self.test_imgs.reshape(len(self.test_imgs), -1)
+            scaler = StandardScaler()
+            train_img_flat = scaler.fit_transform(train_img_flat)
+            test_imgs_flat = scaler.transform(test_imgs_flat)
+            pca = PCA(n_components=2)
+            x_train_pca = pca.fit_transform(train_img_flat)
+            x_test_pca = pca.transform(test_imgs_flat)
+            svm = SVC(kernel='rbf', C=1.0, gamma='scale', probability=True)
+            svm.fit(x_train_pca, self.train_labels)
+            
+            x_min, x_max = x_train_pca[:, 0].min() - 1, x_train_pca[:, 0].max() + 1
+            y_min, y_max = x_train_pca[:, 1].min() - 1, x_train_pca[:, 1].max() + 1
+            xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.5),
+                                 np.arange(y_min, y_max, 0.5))
+            
+            Z = svm.predict(np.c_[xx.ravel(), yy.ravel()])
+            Z = Z.reshape(xx.shape)
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.contourf(xx, yy, Z, alpha=0.4, cmap='viridis')
+            scatter = ax.scatter(x_test_pca[:, 0], x_test_pca[:, 1],
+                                 c=self.test_labels, cmap='viridis', edgecolor='k', s=50)
+            legend = ax.legend(*scatter.legend_elements(),
+                               loc="lower left", title="Classes")
+            ax.add_artist(legend)
+            ax.set_xlabel('Principal Component 1')
+            ax.set_ylabel('Principal Component 2')
+            ax.set_title('SVM Decision Boundaries with PCA')
+            ax.set_xlim(x_min, x_max)
+            ax.set_ylim(y_min, y_max)
+            plt.tight_layout()
+            plt.savefig(f'{self.strategy}-scatter-plot.png')
+        
+        except Exception as e:
+            print(f"Error occurred: {e}")
+
+
+    def render_rfc_decision_tree(self):
+        estimator = self.classifier.estimators_[0]
+        plt.figure(figsize=(10, 8))
+        digits = load_digits()
+        feature_names = [f'pixel_{i}_{j}' for i in range(digits.images[0].shape[0]) for j in range(digits.images[0].shape[1])]
+        class_names = [str(i) for i in range(10)]
+        plot_tree(estimator, feature_names=feature_names, class_names=class_names, filled=True)
+        plt.savefig(save(f'{self.strategy}-decision-tree'))
+
     def select_classifier_from_strategy(self, strategy):
         self.log(f'select_classifier_from_strategy: {strategy}')
         if strategy == "knn":
+            # K Nearest neighbors finds the k nearest 
+            # neighbors(via manhattan distance) & labels the current case based on the mean of those neighbors
             self.log(
                 "KNearestNeighbors with n_neighbors = 5, algorithm = auto, n_jobs = 10")
             return KNeighborsClassifier(n_neighbors=5, algorithm="auto", n_jobs=10)
         elif strategy == "svm":
+            # Support Vector Machine creates a decision boundary 
+            # Across the cartesian plane of graph of the dataset such that items correctly fall on their labels side of the boundary.
             self.log("SupportVectorMachines with gamma=0.1, kernel='poly'")
             return svm.SVC(gamma=0.1, kernel="poly")
         elif strategy == "rfc":
+            # A random forest is a meta estimator that fits a number of decision tree classifiers on
+            # various sub-samples of the dataset and uses averaging to improve the predictive accuracy and control over-fitting.
+
+            # It creates multiple decision trees
+            # then uses a voting system to decide which label to apply to this instance/prediction.
             self.log(
                 "RandomForestClassifier with n_estimators=100, random_state=42")
             return RandomForestClassifier(n_estimators=100, random_state=42)
         elif strategy == "mlp":
+            # Implements a multi-layer perceptron (MLP) algorithm that trains using Backpropagation.
             self.log(
                 "MLPClassifier with hidden_layer_sizes=(100,), max_iter=300, alpha=1e-4, solver='sgd', verbose=10, random_state=1, learning_rate_init=0.001"
             )
