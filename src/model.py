@@ -1,10 +1,11 @@
+import pickle
 import numpy as np
+from nnv import NNV
 
 from matplotlib import style
 import matplotlib.pyplot as plt
 
-from tensorflow.python.keras.models import Sequential
-from tensorflow.python.keras.layers import SimpleRNN, Dense
+from keras import Sequential, layers
 
 from sklearn.svm import SVC
 from sklearn.tree import plot_tree
@@ -17,14 +18,9 @@ from sklearn.inspection import DecisionBoundaryDisplay
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 
-from .shared.mnist_loader import MNIST
-from .shared.utils import (
-    save,
-    create_pickle,
-)
-
 from .log import Log
-
+from .shared.mnist_loader import MNIST
+from .shared.utils import save, create_pickle
 
 class Model(Log):
     def __init__(self, strategy):
@@ -33,6 +29,17 @@ class Model(Log):
         self.strategy = strategy
         self.classifier = self.select_classifier_from_strategy(strategy)
         self.strategies = ['knn', 'svm', 'rfc', 'mlp', 'rnn', 'cnn']
+        self.train_imgs = None
+        self.train_labels = None
+        self.test_imgs = None
+        self.test_labels = None
+
+    def init_trained_model(self):
+        with open(f'tmp/models/{self.strategy}.pickle', 'rb') as f:
+            self.classifier = pickle.load(f)
+        if self.train_imgs is None or self.train_labels is None:
+            self._1_load_data()
+        self.render_mlp_network()
 
     def _1_load_data(self):
         self.log("Loading Data...")
@@ -79,30 +86,21 @@ class Model(Log):
             accuracy = accuracy_score(y_validation, y_pred)
             conf_matrix = confusion_matrix(y_validation, y_pred)
             self.test_labels_pred = self.classifier.predict(self.test_imgs)
-
+        self.train_labels_pred = y_pred
         report_str = classification_report(y_validation, y_pred)
         self.log(f"\nClassification Report: \n{report_str}")
-        self.log(f"\n\nTraining Confidence: \n{confidence:.2f}\nAccuracy: {accuracy:.2f}\nPredicted Values: {y_pred}\n")
-        self.generate_confusion_matrix(conf_matrix, 'validation')
+        self.log(f"\n\nTraining Confidence: \nAccuracy: {accuracy:.2f}\nPredicted Values: {y_pred}\n")
+        # self.log(f"\n\nTraining Confidence: \n{confidence:.2f}\nAccuracy: {accuracy:.2f}\nPredicted Values: {y_pred}\n")
+        self.render_confusion_matrix(conf_matrix, 'validation')
 
     def _4_evaluate_on_test_set(self):
         test_confusion_matrix = confusion_matrix(
             self.test_labels, self.test_labels_pred)
 
-        self.generate_confusion_matrix(test_confusion_matrix, 'test')
-        self.generate_images_with_predictions_for_review()
+        self.render_confusion_matrix(test_confusion_matrix, 'test')
+        self.render_images_with_predictions_for_review()
 
-    def train(self):
-        self.log("Training Starting...")
-        self._1_load_data()
-        x_train, x_validation, y_train, y_validation = self._2_split_into_train_and_validation_sets()
-        self._3_fit_and_measure_validation(
-            x_train, x_validation, y_train, y_validation)
-        self._4_evaluate_on_test_set()
-        self.render_strategy_plot()
-        self.log("Done")
-
-    def render_strategy_plot(self):
+    def _5_render_strategy_illustration(self):
         if self.strategy == 'knn':
             self.render_knn_scatter_plot()
         elif self.strategy == 'svm':
@@ -111,8 +109,20 @@ class Model(Log):
             self.render_rfc_decision_tree()
         elif self.strategy == 'mlp':
             self.render_mlp_network()
+        elif self.strategy == 'rnn':
+            self.render_rnn_network()
 
-    def generate_images_with_predictions_for_review(self):
+    def train(self):
+        self.log("Training Starting...")
+        self._1_load_data()
+        x_train, x_validation, y_train, y_validation = self._2_split_into_train_and_validation_sets()
+        self._3_fit_and_measure_validation(
+            x_train, x_validation, y_train, y_validation)
+        self._4_evaluate_on_test_set()
+        self._5_render_strategy_illustration()
+        self.log("Done")
+
+    def render_images_with_predictions_for_review(self):
         a = np.random.randint(1, 50, 20)
         for idx, i in enumerate(a):
             two_d = (np.reshape(
@@ -123,7 +133,7 @@ class Model(Log):
             plt.savefig(filename)
             plt.clf()
 
-    def generate_confusion_matrix(self, matrix, dataset):
+    def render_confusion_matrix(self, matrix, dataset):
         self.log(f'\nGenerating Confusion Matrix: {dataset}\n{matrix}\n')
         plt.matshow(matrix)
         plt.suptitle(f"Confusion Matrix", fontsize=16)
@@ -151,7 +161,6 @@ class Model(Log):
         x_train_pca = pca.fit_transform(train_img_flat)
         x_test_pca = pca.transform(test_imgs_flat)
 
-        # Determine dynamic limits for x and y axes
         x_min = min(np.min(x_train_pca[:, 0]), np.min(x_test_pca[:, 0]))
         x_max = max(np.max(x_train_pca[:, 0]), np.max(x_test_pca[:, 0]))
         y_min = min(np.min(x_train_pca[:, 1]), np.min(x_test_pca[:, 1]))
@@ -234,59 +243,47 @@ class Model(Log):
         feature_names = [f'pixel_{i}' for i in range(self.train_imgs.shape[1])]
         class_names = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
         plot_tree(estimator, feature_names=feature_names, class_names=class_names, filled=True, fontsize=6, max_depth=4)
-        plt.savefig(save(f'{self.strategy}-decision-tree.png'), dpi=125)
+        plt.savefig(save(f'{self.strategy}_decision-tree'), dpi=125)
 
     def render_mlp_network(self):
         clf = self.classifier
-        fig, ax = plt.subplots(figsize=(10, 8))
 
-        # Calculate positions for all layers
-        layers = [clf.coefs_[i] for i in range(len(clf.coefs_))]
-        v_spacing = 100 
-        h_spacing = 100 
+        layer_sizes = [clf.coefs_[0].shape[0]]
+        for i, coef in enumerate(clf.coefs_, 1):
+            print(f'Layer {i} weights shape: {coef.shape}')
 
-        # Input layer
-        layer_sizes = [clf.n_features_in_] + [s for s in clf.hidden_layer_sizes] + [clf.n_outputs_]
-        layer_center = [np.arange(1, layer_sizes[i] + 1) * v_spacing for i in range(len(layer_sizes))]
-        layer_center = [item - np.mean(item) for item in layer_center]
-        for i, layer in enumerate(layer_center):
-            if i == 0:
-                layer_center[i] = layer / max(layer) * (len(layer_sizes) - 1) * v_spacing
-            else:
-                layer_center[i] = layer + (len(layer_sizes) - 1 - i) * v_spacing
+        for coef in clf.coefs_:
+            layer_sizes.append(coef.shape[1])
+        layer_sizes.append(clf.coefs_[-1].shape[0])
 
-        # Draw connections between layers
-        for n, layer in enumerate(layers):
-            m = layer.shape[0]
-            if n == 0:
-                layer_top = layer_center[n]
-            else:
-                layer_top = layer_center[n + 1]
-            layer_bottom = layer_center[n]
-            layer_bottom -= (layer.shape[1] - 1) / 2 * h_spacing
-            layer_top -= (layer.shape[0] - 1) / 2 * h_spacing
-            for i in range(layer.shape[1]):
-                for j in range(layer.shape[0]):
-                    if n == len(layers) - 1:
-                        ax.plot([n * h_spacing, (n + 1) * h_spacing], [layer_bottom[j], layer_top[i]], color='blue')
-                    else:
-                        ax.plot([n * h_spacing, (n + 1) * h_spacing], [layer_bottom[j], layer_top[i]], color='black')
+        layers_list = [{"title": f"Layer {i}\n{coef.shape}", "units": coef.shape[1]} for i, coef in enumerate(clf.coefs_, 1)]
+        layers_list.insert(0, {"title": f"Input\n{clf.coefs_[0].shape[0]}", "units": clf.coefs_[0].shape[0], "color": "darkBlue"})
+        layers_list.append({"title": f"Output\n{clf.coefs_[-1].shape[1]}", "units": clf.coefs_[-1].shape[1], "color": "darkBlue"})
 
-        for n, layer in enumerate(layers):
-            layer_top = layer_center[n]
-            for m, neuron in enumerate(layer.T):
-                circle = plt.Circle((n * h_spacing, layer_top[m]), 10, color='w', ec='k', zorder=4)
-                ax.add_artist(circle)
+        nnv = NNV(layers_list)
+        
+        nnv.render(save_to_file=f"tmp/{self.strategy}_neural-network.png", do_not_show=True)
 
-        for i, layer_size in enumerate(layer_sizes):
-            ax.text(i * h_spacing, 0, 'Layer {}'.format(i + 1), fontsize=12, ha='center')
-            ax.text(i * h_spacing, -v_spacing / 2, '{} units'.format(layer_size), ha='center', va='top', fontsize=10)
 
-        ax.set_xlim(-h_spacing / 2, (len(layers) - 0.5) * h_spacing + h_spacing / 2)
-        ax.set_ylim(-v_spacing / 2, (np.max(layer_center[-1]) + v_spacing / 2))
-        ax.axis('off')
-        plt.title('Multi-Layer Perceptron (MLP) Architecture')
-        plt.savefig(save(f'{self.strategy}-mlp-network'))
+    def render_rnn_network(self):
+        self.log('render_rnn_network')
+        actual =  np.append(self.train_labels, self.test_labels)
+        predictions = np.append(self.train_labels_pred, self.test_labels_pred)
+        # Replace 9 with min_length when having smaller set
+        # With number classifier the set is so large so it looks like a gigantic mess.
+        min_length = min(len(actual), len(predictions))
+        actual = actual[:9]
+        predictions = predictions[:9]
+        rows = len(actual)
+        plt.figure(figsize=(15, 6), dpi=80)
+        plt.plot(range(rows), actual)
+        plt.plot(range(rows), predictions)
+        plt.axvline(x=9, color='r')
+        plt.legend(['Actual', 'Predictions'])
+        plt.xlabel('Observation number after given time steps')
+        plt.ylabel('Sunspots scaled')
+        plt.title('Actual and Predicted Values. The Red Line Separates The Training And Test Examples')
+        plt.savefig(save(f'{self.strategy}_neural-network'))
 
     def select_classifier_from_strategy(self, strategy):
         self.log(f'select_classifier_from_strategy: {strategy}')
@@ -313,15 +310,15 @@ class Model(Log):
         elif strategy == "mlp":
             # Implements a multi-layer perceptron (MLP) algorithm that trains using Backpropagation.
             self.log(
-                "MLPClassifier with hidden_layer_sizes=(100,), max_iter=300, alpha=1e-4, solver='sgd', verbose=10, random_state=1, learning_rate_init=0.001"
+                "MLPClassifier with hidden_layer_sizes=(100), max_iter=300, alpha=1e-4, solver='sgd', verbose=10, random_state=1, learning_rate_init=0.001"
             )
             return MLPClassifier(
-                hidden_layer_sizes=(100),
-                max_iter=300,
                 alpha=1e-4,
-                solver="sgd",
                 verbose=10,
+                max_iter=300,
+                solver="sgd",
                 random_state=1,
+                hidden_layer_sizes=(100),
                 learning_rate_init=0.001,
             )
         elif strategy == "rnn":
@@ -332,8 +329,8 @@ class Model(Log):
             )
             clf = Sequential(
                 [
-                    SimpleRNN(128, input_shape=(28, 28), activation="relu"),
-                    Dense(10, activation="softmax"),
+                    layers.SimpleRNN(128, input_shape=(28, 28), activation="relu"),
+                    layers.Dense(10, activation="softmax"),
                 ]
             )
             clf.compile(
@@ -347,3 +344,4 @@ class Model(Log):
                 "ConvolutionalNeuralNetwork with n_neighbors=5, algorithm='auto', n_jobs=10"
             )
             return
+

@@ -1,7 +1,6 @@
 from matplotlib import pyplot
 from math import cos, sin, atan
 
-
 class Neuron():
     def __init__(self, x, y):
         self.x = x
@@ -69,7 +68,6 @@ class NeuralNetwork():
             layer.draw()
         pyplot.axis('scaled')
         pyplot.savefig('tmp/neural_network-1.png')
-
 
 
 if __name__ == "__main__":
