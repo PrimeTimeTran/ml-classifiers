@@ -1,7 +1,13 @@
 # Handwritten Digit Recognition with Machine Learning
 
-- 6 different algorithms
-- KNN, SVM, RFC, MLP, RNN, CNN
+- Implemented with 6 classification algorithms
+- Algorithms: KNN, SVM, RFC, MLP, RNN, CNN
+  - [K-Nearest Neighbors(KNN)](https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm)
+  - [Support Vector Machines(SVM)](https://en.wikipedia.org/wiki/Support_vector_machine)
+  - [Random Forest Classification(RFC)](https://en.wikipedia.org/wiki/Random_forest)
+  - [Multi-layer Perceptron(MLP)](https://en.wikipedia.org/wiki/Multilayer_perceptron)
+  - [Recurrent Neural Network(RNN)](https://en.wikipedia.org/wiki/Recurrent_neural_network)
+  - [Convolutional Neural Network(CNN)](https://en.wikipedia.org/wiki/Convolutional_neural_network)
 
 ![demo](./tmp/knn_scatter-plot.png)
 ![demo](./tmp/svm_scatter-with_boundaries.png)

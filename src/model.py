@@ -4,8 +4,7 @@ from nnv import NNV
 
 from matplotlib import style
 import matplotlib.pyplot as plt
-
-from keras import Sequential, layers
+from keras import Sequential, layers, datasets
 
 from sklearn.svm import SVC
 from sklearn.tree import plot_tree
@@ -19,7 +18,6 @@ from sklearn.discriminant_analysis import StandardScaler
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 
 from .log import Log
-from .shared.mnist_loader import MNIST
 from .shared.utils import save, create_pickle
 
 class Model(Log):
@@ -30,32 +28,23 @@ class Model(Log):
         self.classifier = self.select_classifier_from_strategy(strategy)
         self.strategies = ['knn', 'svm', 'rfc', 'mlp', 'rnn', 'cnn']
         self.train_imgs = None
-        self.train_labels = None
-        self.test_imgs = None
-        self.test_labels = None
 
     def init_trained_model(self):
         with open(f'tmp/models/{self.strategy}.pickle', 'rb') as f:
             self.classifier = pickle.load(f)
-        if self.train_imgs is None or self.train_labels is None:
-            self._1_load_data()
+        self._1_load_data()
         self.render_mlp_network()
 
     def _1_load_data(self):
         self.log("Loading Data...")
-        data = MNIST()
-        self.log("Loading Training Data...")
-        imgs_train, labels_train = data.load_training()
-        self.train_imgs = np.array(imgs_train)
-        self.train_labels = np.array(labels_train)
-
-        self.log("Loading Testing Data...")
-        imgs_test, labels_test = data.load_testing()
-        self.test_imgs = np.array(imgs_test)
-        self.test_labels = np.array(labels_test)
+        (x_train, y_train), (x_test, y_test) = datasets.mnist.load_data()
+        self.train_imgs = np.array(x_train).reshape(x_train.shape[0], -1)
+        self.train_labels = np.array(y_train)
+        self.test_imgs = np.array(x_test).reshape(x_test.shape[0], -1)
+        self.test_labels = np.array(y_test)
 
     def _2_split_into_train_and_validation_sets(self):
-        self.log("Splitting Data into train & validation sets...")
+        self.log("Splitting data into train & validation sets...")
         return model_selection.train_test_split(
             self.train_imgs, self.train_labels, test_size=0.1
         )
@@ -89,7 +78,7 @@ class Model(Log):
         self.train_labels_pred = y_pred
         report_str = classification_report(y_validation, y_pred)
         self.log(f"\nClassification Report: \n{report_str}")
-        self.log(f"\n\nTraining Confidence: \nAccuracy: {accuracy:.2f}\nPredicted Values: {y_pred}\n")
+        self.log(f"\n\nTraining Accuracy: \nAccuracy: {accuracy:.2f}\nPredicted Values: {y_pred}\n")
         # self.log(f"\n\nTraining Confidence: \n{confidence:.2f}\nAccuracy: {accuracy:.2f}\nPredicted Values: {y_pred}\n")
         self.render_confusion_matrix(conf_matrix, 'validation')
 
@@ -338,9 +327,3 @@ class Model(Log):
                 loss="sparse_categorical_crossentropy",
             )
             return clf
-        elif strategy == "cnn":
-            self.log(
-                "ConvolutionalNeuralNetwork with n_neighbors=5, algorithm='auto', n_jobs=10"
-            )
-            return
-
