@@ -11,12 +11,12 @@ if __name__ == "__main__":
     strategy = args['strategy']
     method = args['method']
 
-    model = Model(strategy)
-
     if strategy == 'cnn':
       model = CNN()
       model.train()
     elif method == 'train':
+      model = Model(strategy)
       model.train()
     elif method == 'init_trained_model':
+      model = Model(strategy)
       model.init_trained_model()

@@ -1,4 +1,3 @@
-import os
 import keras
 import numpy as np
 from PIL import Image
@@ -8,7 +7,6 @@ from keras import models, layers, callbacks, datasets
 
 class CNN():
     def __init__(self):
-        print('init')
         self.saved_model = 'tmp/models/cnn_model.keras'
 
     def train(self):
@@ -36,20 +34,14 @@ class CNN():
                     metrics=['accuracy'])
 
         checkpoint_path = "tmp/models/cp-{epoch:04d}.weights.h5"
-        checkpoint_dir = os.path.dirname(checkpoint_path)
-        cp_callback = callbacks.ModelCheckpoint(filepath=checkpoint_path,
-                                    save_weights_only=True,
-                                    verbose=1)
-
-        os.listdir(checkpoint_dir)
+        cp_callback = callbacks.ModelCheckpoint(filepath=checkpoint_path, save_weights_only=True, verbose=1)
 
         model.fit(x_train, y_train,
-                batch_size=batch_size,
-                epochs=epochs,
                 verbose=1,
-                validation_data=(x_test, y_test),
-                callbacks=[cp_callback],)
-        score = model.evaluate(x_test, y_test, verbose=0)
+                epochs=epochs,
+                batch_size=batch_size,
+                callbacks=[cp_callback],
+                validation_data=(x_test, y_test))
         keras.saving.save_model(model, self.saved_model)
 
     def load_and_preprocess_image(self, image_path):
@@ -67,12 +59,11 @@ class CNN():
                     loss='categorical_crossentropy', metrics=['accuracy'])
         return model
 
-    def predict(self,model, file):
+    def predict(self, model, file):
         img = self.load_and_preprocess_image(file)
         prediction = model.predict(img)
         predicted_class = np.argmax(prediction)
         print('Predicted class:', predicted_class)
-
 
     def use_trained_model(self):
         model = self.setup_model()

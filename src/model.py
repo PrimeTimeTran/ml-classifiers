@@ -196,7 +196,7 @@ class Model(Log):
             ax.set_title(f"KNN decision boundaries\n(weights={weights!r})")
 
         plt.tight_layout()
-        plt.savefig(save(f'{self.strategy}-scatter-plot'))
+        plt.savefig(save(f'{self.strategy}_scatter-plot'))
 
     def render_svm_scatter_plot(self):
         try:
@@ -232,7 +232,7 @@ class Model(Log):
             ax.set_xlim(x_min, x_max)
             ax.set_ylim(y_min, y_max)
             plt.tight_layout()
-            plt.savefig(save(f'{self.strategy}-decision-boundaries'))
+            plt.savefig(save(f'{self.strategy}_scatter-with_boundaries'))
         
         except Exception as e:
             print(f"Error occurred: {e}")
@@ -263,7 +263,6 @@ class Model(Log):
         nnv = NNV(layers_list)
         
         nnv.render(save_to_file=f"tmp/{self.strategy}_neural-network.png", do_not_show=True)
-
 
     def render_rnn_network(self):
         self.log('render_rnn_network')
