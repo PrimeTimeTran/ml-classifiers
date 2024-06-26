@@ -2,8 +2,6 @@ import os
 import struct
 from array import array
 
-from .utils import data_dir
-
 class MNIST(object):
     def __init__(self):
         self.path = 'tmp/dataset'

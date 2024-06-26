@@ -10,7 +10,7 @@
 - Install dependencies
 
 ```sh
-python -m venv ,venv
+python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -34,3 +34,8 @@ Run model, appending time logs for comparison
 
 (time python src/main.py KNN) >> tmp/logs/KNN-summary.log 2>&1 && (time python src/main.py RNN) >> tmp/logs/RNN-summary.log 2>&1
 ```
+
+## References
+
+- [Classification Strategies - Scikit-Learn](https://scikit-learn.org/stable/)
+- [Charts - Matplotlib](https://python-charts.com/matplotlib/)
